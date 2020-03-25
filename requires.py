@@ -15,28 +15,19 @@ import socket
 
 from charmhelpers.core import hookenv
 
-from charms.reactive import set_flag, clear_flag
+from charms.reactive import toggle_flag
 from charms.reactive import Endpoint
-from charms.reactive import when_not, when
 
 
 class VaultKVRequires(Endpoint):
-
-    @when('endpoint.{endpoint_name}.changed')
-    def data_changed(self):
-        if self.unit_role_id and self.unit_token and self.vault_url:
-            set_flag(self.expand_name('{endpoint_name}.available'))
-        else:
-            clear_flag(self.expand_name('{endpoint_name}.available'))
-
-    @when_not('endpoint.{endpoint_name}.joined')
-    def broken(self):
-        clear_flag(self.expand_name('{endpoint_name}.connected'))
-        clear_flag(self.expand_name('{endpoint_name}.available'))
-
-    @when('endpoint.{endpoint_name}.joined')
-    def joined(self):
-        set_flag(self.expand_name('{endpoint_name}.connected'))
+    def manage_flags(self):
+        toggle_flag(self.expand_name('{endpoint_name}.connected'),
+                    self.is_joined)
+        toggle_flag(self.expand_name('{endpoint_name}.available'),
+                    all([self.is_joined,
+                         self.unit_role_id,
+                         self.unit_token,
+                         self.vault_url]))
 
     @property
     def endpoint_address(self):

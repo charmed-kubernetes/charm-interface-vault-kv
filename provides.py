@@ -10,9 +10,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from charms.reactive import set_flag, clear_flag
+from charms.reactive import is_flag_set, toggle_flag, clear_flag
 from charms.reactive import Endpoint
-from charms.reactive import when_any, when_not, when
 
 from charmhelpers.contrib.network.ip import (
     is_address_in_network,
@@ -24,31 +23,20 @@ from charmhelpers.core.hookenv import (
 
 
 class VaultKVProvides(Endpoint):
-
-    @when_any('endpoint.{endpoint_name}.changed.access_address',
-              'endpoint.{endpoint_name}.changed.secret_backend',
-              'endpoint.{endpoint_name}.changed.hostname',
-              'endpoint.{endpoint_name}.changed.isolated')
-    def new_secret_backend(self):
-        # New backend request detected, set flags and clear changed flags
-        set_flag(self.expand_name('endpoint.{endpoint_name}.new-request'))
-        clear_flag(self.expand_name('endpoint.{endpoint_name}.'
-                                    'changed.access_address'))
-        clear_flag(self.expand_name('endpoint.{endpoint_name}.'
-                                    'changed.secret_backend'))
-        clear_flag(self.expand_name('endpoint.{endpoint_name}.'
-                                    'changed.hostname'))
-        clear_flag(self.expand_name('endpoint.{endpoint_name}.'
-                                    'changed.isolated'))
-
-    @when_not('endpoint.{endpoint_name}.joined')
-    def broken(self):
-        clear_flag(self.expand_name('endpoint.{endpoint_name}.new-request'))
-        clear_flag(self.expand_name('{endpoint_name}.connected'))
-
-    @when('endpoint.{endpoint_name}.joined')
-    def joined(self):
-        set_flag(self.expand_name('{endpoint_name}.connected'))
+    def manage_flags(self):
+        any_fields_changed = False
+        for field in ('access_address',
+                      'secret_backend',
+                      'hostname',
+                      'isolated'):
+            flag = self.expand_name('endpoint.{endpoint_name}.'
+                                    'changed.{}').format(field)
+            any_fields_changed = any_fields_changed or is_flag_set(flag)
+            clear_flag(flag)
+        toggle_flag(self.expand_name('{endpoint_name}.connected'),
+                    self.is_joined)
+        toggle_flag(self.expand_name('endpoint.{endpoint_name}.new-request'),
+                    any_fields_changed)
 
     def publish_url(self, vault_url, remote_binding=None):
         """ Publish URL for Vault to all Relations
