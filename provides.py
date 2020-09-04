@@ -64,12 +64,22 @@ class VaultKVProvides(Endpoint):
         for relation in self.relations:
             relation.to_publish['vault_ca'] = vault_ca
 
+    def get_remote_unit_name(self, unit):
+        """Get the remote units name.
+
+        :param unit: Unit to get name for.
+        :type name: Unit
+        :returns: Unit name
+        :rtype: str
+        """
+        return unit.received.get('unit_name') or unit.unit_name
+
     def set_role_id(self, unit, role_id, token):
         """ Set the AppRole ID and token for out-of-band Secret ID retrieval
         for a specific remote unit """
         # for cmr we will need to the other end to provide their unit name
         # expicitly.
-        unit_name = unit.received.get('unit_name') or unit.unit_name
+        unit_name = self.get_remote_unit_name(unit)
         unit.relation.to_publish['{}_role_id'.format(unit_name)] = role_id
         unit.relation.to_publish['{}_token'.format(unit_name)] = token
 
@@ -83,11 +93,13 @@ class VaultKVProvides(Endpoint):
                 secret_backend = unit.received['secret_backend']
                 hostname = unit.received['hostname']
                 isolated = unit.received['isolated']
+                unit_name = self.get_remote_unit_name(unit)
                 if not (secret_backend and access_address and
                         hostname and isolated is not None):
                     continue
                 requests.append({
                     'unit': unit,
+                    'unit_name': unit_name,
                     'access_address': access_address,
                     'ingress_address': ingress_address,
                     'secret_backend': secret_backend,
