@@ -70,7 +70,7 @@ class VaultKVProvides(Endpoint):
         # if the unit_name shared over the relation is updated, we should clear
         # previously associated role_id/token pairs from the relation
         unit_id = unit_name.split("/")[1]  # the unit's id number
-        removable = f"{unit_id}_role_id", f"{unit_id}_token"
+        removable = f"/{unit_id}_role_id", f"/{unit_id}_token"
         for key in unit.relation.to_publish.keys():
             if any(key.endswith(r) for r in removable):
                 unit.relation.to_publish.raw_data[key] = ""  # clear this value
